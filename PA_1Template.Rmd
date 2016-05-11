@@ -1,0 +1,152 @@
+---
+title: "Reproducible Research Project 1"
+author: "John Cleveland"
+date: "May 9, 2016"
+output: html_document
+---
+ 
+
+## Loading and preprocessing the data
+Show any code that is needed to
+
+##### 1. Load the data (i.e. `read.csv()`)
+
+##### 2. Process/transform the data (if necessary) into a format suitable for your analysis
+```{r}
+
+```{r, echo=TRUE, results='hide', warning=FALSE, message=FALSE}
+library(ggplot2)
+library(scales)
+library(Hmisc)
+```
+
+
+
+```{r, results='markup', warning=TRUE, message=TRUE}
+activity_data <- read.csv('activity.csv')
+```
+
+-----
+
+## What is mean total number of steps taken per day?
+```{r}
+steps_per_day <- tapply(activity_data$steps, activity_data$date, sum, na.rm=TRUE)
+```
+
+##### 1. Make a histogram of the total number of steps taken each day
+```{r}
+qplot(steps_per_day, xlab='Total steps per day', ylab='Day frequency binwith of 250', binwidth=250)
+```
+
+##### 2. Calculate and report the __mean__ and __median__ total number of steps taken per day
+```{r}
+day_mean <- mean(steps_per_day)
+day_median <- median(steps_per_day)
+```
+* Mean: `r day_mean`
+* Median:  `r day_median`
+
+-----
+
+## What is the average daily activity pattern?
+```{r}
+avg_steps <- aggregate(x=list(mean_steps=activity_data$steps), by=list(interval=activity_data$interval), FUN=mean, na.rm=TRUE)
+```
+
+##### 1. Make a time series plot (i.e. `type = "l"`) of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+```{r}
+ggplot(data=avg_steps, aes(x=interval, y=mean_steps)) +
+    geom_line() +
+    xlab("5-minute interval") +
+    ylab("average number of steps taken") 
+```
+
+##### 2. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+```{r}
+max_steps <- which.max(avg_steps$mean_steps)
+
+```
+
+* Most Steps at interval : `r avg_steps[max_steps,1]`
+
+----
+
+## Imputing missing values
+##### 1. Calculate and report the total number of missing values in the dataset 
+```{r}
+num_missing_values <- length(which(is.na(activity_data)))
+```
+
+* Number of missing values: `r num_missing_values`
+
+##### 2. Devise a strategy for filling in all of the missing values in the dataset.
+
+* The NA values occur only in the numeric column _steps_, so we  will simply replace (impute) the **NA** values with the mean of the other values.
+
+##### 3. Create a new dataset that is equal to the original dataset but with the missing data filled in.
+```{r}
+activity_data_imputed <- activity_data
+activity_data_imputed$steps <- impute(activity_data$steps, fun=  "random")
+```
+
+
+##### 4.Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+```{r}
+steps_per_day_imputed <- tapply(activity_data_imputed$steps, activity_data_imputed$date, sum)
+qplot(steps_per_day_imputed, xlab='Total steps per day (Imputed)', ylab='Day frequency binwith of 250', binwidth=250)
+```
+
+
+```{r}
+steps_per_day_meanimputed <- mean(steps_per_day_imputed)
+steps_per_day_medianimputed <- median(steps_per_day_imputed)
+```
+* Mean (Imputed): `r steps_per_day_meanimputed`
+* Median (Imputed):  `r steps_per_day_medianimputed`
+
+* The impact is that the mean and median can change significantly depending upon how we impute the **NA**. When we impute using the mean to replace **NA** the mean and median are identical (virtually). However if one uses the method "random " then one gets results differing from both the nonimputive and imputive cases e.g.
+
+```{r}
+activity_data_imputed_random <- activity_data
+activity_data_imputed_random$steps <- impute(activity_data$steps, fun=  "random")
+```
+```{r}
+steps_per_day_imputed <- tapply(activity_data_imputed_random$steps, activity_data_imputed_random$date, sum)
+
+```
+
+
+
+
+```{r}
+steps_per_day_meanimputed_random <- mean(steps_per_day_imputed)
+steps_per_day_medianimputed_random <- median(steps_per_day_imputed)
+```
+
+* Mean (Imputed_random): `r steps_per_day_meanimputed_random`
+* Median (Imputed_random):  `r steps_per_day_medianimputed_random`
+
+
+
+----
+
+## Are there differences in activity patterns between weekdays and weekends?
+##### 1. Create a new factor variable in the dataset with two levels - "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
+
+```{r}
+activity_data_imputed$dateType <-  ifelse(as.POSIXlt(activity_data_imputed$date)$wday %in% c(0,6), 'weekend', 'weekday')
+```
+
+##### 2. Make a panel plot containing a time series plot (i.e. `type = "l"`) of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis)
+
+```{r}
+averagedActivity_data_imputed <- aggregate(steps ~ interval + dateType, data=activity_data_imputed, mean)
+ggplot(averagedActivity_data_imputed, aes(interval, steps)) + 
+    geom_line() + 
+    facet_grid(dateType ~ .) +
+    xlab("5-minute interval") + 
+    ylab("avg number of steps")
+```
+
+* Yes, the graph shows qualitatively different behaviors. The weekdays seem more concentrated at peaks whereas the weekends show a wider distribution of the mass. Perhaps this is due to the fact that the weekend provided more occasion for diversity of movement rather than perhaps a mundane routine week. 
